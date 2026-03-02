@@ -36,48 +36,40 @@ export default function SignalsPage() {
     useEffect(() => {
         fetchSignals();
         // Optional: Set up polling
-        const interval = setInterval(fetchSignals, 5000);
+        const interval = setInterval(fetchSignals, 50000);
         return () => clearInterval(interval);
     }, []);
 
     const handleSaveSignal = async (signalData: Partial<Signal>) => {
-        try {
-            const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/strategy/tradingview-config`;
+        const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/strategy/tradingview-config`;
 
-            // Sanitize data: remove _id, isEnabled, createdAt, updatedAt
-            const { _id, isEnabled, createdAt, updatedAt, ...rest } = signalData as any;
+        // Sanitize data: remove _id, isEnabled, createdAt, updatedAt
+        const { _id, isEnabled, createdAt, updatedAt, ...rest } = signalData as any;
 
-            // Sanitize legs: remove productType, strategyName, legs from individual legs if they exist
-            // based on the error: "toBeTradedOn.0.property productType should not exist" etc.
-            const sanitizedLegs = rest.toBeTradedOn?.map((leg: any) => {
-                const { productType, strategyName, legs, ...legRest } = leg;
-                return legRest;
-            });
+        // Sanitize legs per API requirement
+        const sanitizedLegs = rest.toBeTradedOn?.map((leg: any) => {
+            const { productType, strategyName, legs, ...legRest } = leg;
+            return legRest;
+        });
 
-            const payload = {
-                ...rest,
-                toBeTradedOn: sanitizedLegs
-            };
+        const payload = {
+            ...rest,
+            toBeTradedOn: sanitizedLegs,
+        };
 
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: response.statusText }));
-                throw new Error(errorData.message || "Failed to save signal");
-            }
-
-            setIsModalOpen(false);
-            await fetchSignals(); // Refresh list
-        } catch (error) {
-            console.error("Error saving signal:", error);
-            alert(error instanceof Error ? error.message : "Failed to save signal");
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: response.statusText }));
+            throw new Error(errorData.message || "Failed to save signal");
         }
+
+        // Background refresh — modal handles its own close animation
+        fetchSignals();
     };
 
     const handleDelete = async (id: string) => {
