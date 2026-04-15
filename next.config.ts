@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
     'http://188.208.141.112:3001',
     'http://188.208.141.112:5000',
     'http://localhost:3000',
-    'http://43.242.224.95:80',
     'http://43.242.224.95:3001',
+    'http://localhost:3001',
   ],
 };
 
