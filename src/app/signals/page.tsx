@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Signal, TradeLeg } from "@/types/signal";
 import { cn } from "@/lib/utils";
-import { ArrowUpRight, ArrowDownRight, Clock, RefreshCw, AlertCircle, ChevronDown, ChevronUp, Plus, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Clock, RefreshCw, AlertCircle, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Play } from "lucide-react";
 import { SignalFormModal } from "@/components/SignalFormModal";
 import { ScriptSearch } from "@/components/ScriptSearch";
 
@@ -206,9 +206,47 @@ export default function SignalsPage() {
 
 function SignalCard({ signal, onEdit, onDelete }: { signal: Signal; onEdit: () => void; onDelete: () => void }) {
     const [showLegs, setShowLegs] = useState(false);
+    const [isExecuting, setIsExecuting] = useState(false);
+    
     const isBuy = signal.side === "BUY";
     const isExit = signal.side === "EXIT";
     const hasLegs = signal.toBeTradedOn && signal.toBeTradedOn.length > 0;
+
+    const handleExecute = async () => {
+        setIsExecuting(true);
+        try {
+            const payload = {
+                exchange: signal.exchange,
+                symbol: signal.symbolName,
+                token: signal.tokenNumber,
+                side: signal.side,
+                price: "1.00",
+                volume: signal.quantityLots || 1,
+                interval: "5min",
+                strategy: signal.strategyName,
+                secret: "tv_secret_123"
+            };
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/strategy/tradingview/webhook`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                throw new Error(errorData.message || "Failed to execute signal");
+            }
+
+            const data = await response.json().catch(() => ({ message: "Success" }));
+            alert(`Order placed successfully.\nResponse: ${data.message || 'Success'}`);
+        } catch (error) {
+            console.error("Error executing signal:", error);
+            alert(error instanceof Error ? error.message : "Failed to execute signal");
+        } finally {
+            setIsExecuting(false);
+        }
+    };
 
     return (
         <div className="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
@@ -327,6 +365,30 @@ function SignalCard({ signal, onEdit, onDelete }: { signal: Signal; onEdit: () =
                         ))}
                     </div>
                 )}
+                
+                <div className="mt-4 pt-4 border-t border-border/50">
+                    <button
+                        onClick={handleExecute}
+                        disabled={isExecuting}
+                        className={cn(
+                            "w-full flex items-center justify-center space-x-2 rounded-lg border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-md active:translate-y-0",
+                            isBuy 
+                                ? "border-green-200 bg-gradient-to-b from-green-50/80 to-green-100/50 text-green-700 hover:from-green-100 hover:to-green-200/50 dark:border-green-900/50 dark:from-green-900/20 dark:to-green-900/10 dark:text-green-400 dark:hover:from-green-900/40"
+                                : isExit 
+                                    ? "border-orange-200 bg-gradient-to-b from-orange-50/80 to-orange-100/50 text-orange-700 hover:from-orange-100 hover:to-orange-200/50 dark:border-orange-900/50 dark:from-orange-900/20 dark:to-orange-900/10 dark:text-orange-400 dark:hover:from-orange-900/40"
+                                    : "border-red-200 bg-gradient-to-b from-red-50/80 to-red-100/50 text-red-700 hover:from-red-100 hover:to-red-200/50 dark:border-red-900/50 dark:from-red-900/20 dark:to-red-900/10 dark:text-red-400 dark:hover:from-red-900/40"
+                        )}
+                    >
+                        {isExecuting ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Play className="h-4 w-4 fill-current opacity-80" />
+                        )}
+                        <span className="tracking-wide uppercase text-xs">
+                            {isExecuting ? "Executing..." : `Manually Execute ${signal.side}`}
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     );
