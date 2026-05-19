@@ -235,7 +235,18 @@ export default function MarketDataPage() {
     };
 
     const renderPositionCol = (col: string, item: any) => {
-        const val = item[col] ?? "-";
+        let val = item[col] ?? "-";
+        
+        if (col === "urmtom") {
+            const netqty = Number(item.netqty || 0);
+            if (netqty !== 0) {
+                const lp = Number(item.lp || 0);
+                const rpnl = Number(item.rpnl || 0);
+                const calculatedUrmtom = rpnl + (netqty * lp);
+                val = calculatedUrmtom.toFixed(2);
+            }
+        }
+
         if (col === "rpnl" || col === "netqty" || col === "urmtom") return <ColoredValue value={val} />;
         if (col === "tsym") return <span className="font-semibold text-foreground">{val}</span>;
         return val;
