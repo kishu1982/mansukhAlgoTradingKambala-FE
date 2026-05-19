@@ -1,10 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LineChart, Radio, Database } from "lucide-react";
+import { LineChart, Radio, Database, RefreshCw } from "lucide-react";
 
 const navItems = [
     {
@@ -26,14 +27,50 @@ const navItems = [
 
 export function Navbar() {
     const pathname = usePathname();
+    const [algoId, setAlgoId] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    useEffect(() => {
+        const fetchAlgoId = async () => {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/exchange-data/algoid/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAlgoId(data.AlgoId);
+                }
+            } catch (error) {
+                console.error("Failed to fetch AlgoId", error);
+            }
+        };
+        fetchAlgoId();
+    }, []);
+
+    const handleRefresh = async () => {
+        if (isRefreshing) return;
+        setIsRefreshing(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/market/refresh-instruments`);
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Successfully refreshed ${data.count} instruments.`);
+            } else {
+                alert('Failed to refresh instruments.');
+            }
+        } catch (error) {
+            console.error("Failed to refresh instruments", error);
+            alert('Error refreshing instruments.');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     return (
         <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-16 items-center px-4">
                 <div className="mr-4 hidden md:flex">
-                    <Link href="/" className="mr-6 flex items-center space-x-2">
+                    <Link href="/signals" className="mr-6 flex items-center space-x-2">
                         <span className="hidden font-bold sm:inline-block">
-                            AlgoTrading
+                            AlgoTrading {algoId ? `: ${algoId}` : ''}
                         </span>
                     </Link>
                     <nav className="flex items-center space-x-6 text-sm font-medium">
@@ -55,6 +92,14 @@ export function Navbar() {
                     </nav>
                 </div>
                 <div className="flex flex-1 items-center justify-end space-x-2">
+                    <button 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-colors"
+                        title="Refresh Instruments"
+                    >
+                        <RefreshCw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
+                    </button>
                     <ThemeToggle />
                 </div>
             </div>
