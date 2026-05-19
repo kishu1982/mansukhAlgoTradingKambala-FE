@@ -84,6 +84,8 @@ const headerMap: Record<string, string> = {
     status: "Status",
     norentm: "Noren Time",
     stat: "Status",
+    urmtom: "Running Pnl",
+    trantype: "Trade Side",
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -131,13 +133,16 @@ function ExpandedDetailsGrid({ data }: { data: any }) {
     );
 }
 
-function ExpandableRow({ item, columns, renderCol, children }: { item: any, columns: string[], renderCol: (col: string, item: any) => React.ReactNode, children?: React.ReactNode }) {
+function ExpandableRow({ item, columns, renderCol, rowClassName, children }: { item: any, columns: string[], renderCol: (col: string, item: any) => React.ReactNode, rowClassName?: string, children?: React.ReactNode }) {
     const [expanded, setExpanded] = useState(false);
 
     return (
         <>
             <tr 
-                className="cursor-pointer border-b border-border/50 transition-all hover:bg-muted/40 odd:bg-transparent even:bg-muted/10 group"
+                className={cn(
+                    "cursor-pointer border-b border-border/50 transition-all group",
+                    rowClassName ? rowClassName : "hover:bg-muted/40 odd:bg-transparent even:bg-muted/10"
+                )}
                 onClick={() => setExpanded(!expanded)}
             >
                 {columns.map((col, idx) => (
@@ -218,20 +223,27 @@ export default function MarketDataPage() {
         ? orders 
         : orders.filter(o => o.raw?.status === orderStatusFilter);
 
-    // const positionCols = ["exch", "tsym", "s_prdt_ali", "token", "netqty", "netavgprc", "lp", "rpnl"];
-    const positionCols = ["exch", "tsym", "s_prdt_ali", "token", "netqty", "netavgprc", "lp", "rpnl"];
-    const tradeCols = ["norenordno", "exch", "prctyp", "s_prdt_ali", "prd", "tsym", "token", "flqty", "flprc", "exch_tm", "remarks"];
-    const orderCols = ["exchordid", "exch", "tsym", "prctyp", "token", "rprc", "status", "norentm", "remarks"];
+    const positionCols = ["exch", "tsym", "s_prdt_ali", "token", "netqty", "netavgprc", "lp", "rpnl", "urmtom"];
+    const tradeCols = ["norenordno", "exch", "prctyp", "trantype", "s_prdt_ali", "prd", "tsym", "token", "flqty", "flprc", "exch_tm", "remarks"];
+    const orderCols = ["exchordid", "exch", "tsym", "prctyp", "trantype", "token", "rprc", "status", "norentm", "remarks"];
+
+    const getRowClass = (item: any) => {
+        const type = item.raw?.trantype || item.trantype;
+        if (type === 'B') return "bg-sky-100/60 hover:bg-sky-200/60 dark:bg-sky-900/30 dark:hover:bg-sky-900/50";
+        if (type === 'S') return "bg-pink-100/60 hover:bg-pink-200/60 dark:bg-pink-900/30 dark:hover:bg-pink-900/50";
+        return "";
+    };
 
     const renderPositionCol = (col: string, item: any) => {
         const val = item[col] ?? "-";
-        if (col === "rpnl" || col === "netqty") return <ColoredValue value={val} />;
+        if (col === "rpnl" || col === "netqty" || col === "urmtom") return <ColoredValue value={val} />;
         if (col === "tsym") return <span className="font-semibold text-foreground">{val}</span>;
         return val;
     };
 
     const renderTradeCol = (col: string, item: any) => {
         const val = item.raw?.[col] ?? "-";
+        if (col === "trantype") return <span className="font-semibold">{val === "B" ? "BUY" : val === "S" ? "SELL" : val}</span>;
         if (col === "tsym") return <span className="font-semibold text-foreground">{val}</span>;
         if (col === "stat") return <StatusBadge status={val} />;
         return val;
@@ -239,6 +251,7 @@ export default function MarketDataPage() {
 
     const renderOrderCol = (col: string, item: any) => {
         const val = item.raw?.[col] ?? "-";
+        if (col === "trantype") return <span className="font-semibold">{val === "B" ? "BUY" : val === "S" ? "SELL" : val}</span>;
         if (col === "tsym") return <span className="font-semibold text-foreground">{val}</span>;
         if (col === "status") return <StatusBadge status={val} />;
         return val;
@@ -328,6 +341,7 @@ export default function MarketDataPage() {
                                             item={trade} 
                                             columns={tradeCols} 
                                             renderCol={renderTradeCol}
+                                            rowClassName={getRowClass(trade)}
                                         />
                                     ))
                                 )}
@@ -378,6 +392,7 @@ export default function MarketDataPage() {
                                             item={order} 
                                             columns={orderCols} 
                                             renderCol={renderOrderCol}
+                                            rowClassName={getRowClass(order)}
                                         />
                                     ))
                                 )}
