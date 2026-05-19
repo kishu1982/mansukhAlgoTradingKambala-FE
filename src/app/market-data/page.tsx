@@ -71,7 +71,7 @@ const headerMap: Record<string, string> = {
     netqty: "Net Qty",
     netavgprc: "Net Avg Price",
     lp: "LTP",
-    rpnl: "Realized P&L",
+    rpnl: "Net Value",
     norenordno: "Order No",
     prctyp: "Price Type",
     prd: "Product",
